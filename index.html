@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Phaser 3 Game</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="text/javascript">
+      var config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        physics: {
+          default: 'arcade',
+          arcade: {
+            gravity: { y: 300 },
+            debug: false,
+          },
+        },
+        scene: {
+          preload: preload,
+          create: create,
+          update: update,
+        },
+      }
+
+      var player
+      var marios
+      var platforms
+      var cursors
+      var score = 0
+      var scoreText
+
+      var game = new Phaser.Game(config)
+      var lives = 3 // Initial lives
+      var livesText // For displaying lives on screen
+
+      //////////////////////////////////////////////////////////////////////
+      function preload() {
+        this.load.image('sky', 'assets/sky.png')
+        //this.load.image('background', 'assets/background.png')
+        this.load.image('ground', 'assets/platform.png')
+        this.load.image('mario', 'assets/mario.png')
+        this.load.image('bomb', 'assets/bomb.png')
+        this.load.spritesheet(
+          'dude',
+          'assets/dude.png',
+          //this.load.spritesheet('farmer', 'assets/farmer.png',
+          {
+            frameWidth: 32,
+            frameHeight: 48,
+          }
+        )
+      }
+
+      ///////////////////////////////////////////////////////////////////////
+      function create() {
+        // this.add.image(400, 300, 'background')
+        this.add.image(400, 300, 'sky')
+
+        platforms = this.physics.add.staticGroup()
+        platforms.create(400, 568, 'ground').setScale(2).refreshBody()
+        platforms.create(600, 400, 'ground')
+        platforms.create(50, 250, 'ground')
+        platforms.create(750, 220, 'ground')
+
+        player = this.physics.add.sprite(100, 450, 'dude')
+        player.setBounce(0.2)
+        player.setCollideWorldBounds(true)
+
+        this.anims.create({
+          key: 'left',
+          frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
+          frameRate: 10,
+          repeat: -1,
+        })
+
+        this.anims.create({
+          key: 'turn',
+          frames: [{ key: 'dude', frame: 4 }],
+          frameRate: 20,
+        })
+
+        this.anims.create({
+          key: 'right',
+          frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
+          frameRate: 10,
+          repeat: -1,
+        })
+
+        cursors = this.input.keyboard.createCursorKeys()
+
+        marios = this.physics.add.group({
+          key: 'mario',
+          repeat: 11,
+          setXY: { x: 12, y: 0, stepX: 70 },
+        })
+
+        marios.children.iterate(function (child) {
+          child.setBounceY(Phaser.Math.FloatBetween(0.3, 0.6))
+        })
+
+        bombs = this.physics.add.group()
+
+        scoreText = this.add.text(16, 16, 'Score: 0', {
+          fontSize: '32px',
+          fill: '#000',
+        })
+        livesText = this.add.text(16, 50, 'Lives: 3', {
+          fontSize: '32px',
+          fill: '#000',
+        }) // Add lives display
+
+        this.physics.add.collider(player, platforms)
+        this.physics.add.collider(marios, platforms)
+        this.physics.add.collider(bombs, platforms)
+
+        this.physics.add.overlap(player, marios, collectMario, null, this)
+        this.physics.add.collider(player, bombs, hitBomb, null, this)
+      }
+
+      ////////// ADD PLAYER ////////////
+
+      player = this.physics.add.sprite(100, 450, 'dude')
+
+      player.setBounce(0.2)
+      player.setCollideWorldBounds(true)
+
+      this.anims.create({
+        key: 'left',
+        frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
+        frameRate: 10,
+        repeat: -1,
+      })
+
+      this.anims.create({
+        key: 'turn',
+        frames: [{ key: 'dude', frame: 4 }],
+        frameRate: 20,
+      })
+
+      this.anims.create({
+        key: 'right',
+        frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
+        frameRate: 10,
+        repeat: -1,
+      })
+
+      cursors = this.input.keyboard.createCursorKeys()
+
+      marios = this.physics.add.group({
+        key: 'mario',
+        repeat: 11,
+        setXY: { x: 12, y: 0, stepX: 70 },
+      })
+
+      marios.children.iterate(function (child) {
+        child.setBounceY(Phaser.Math.FloatBetween(0.3, 0.6))
+      })
+
+      bombs = this.physics.add.group()
+
+      scoreText = this.add.text(16, 16, 'score: 0', {
+        fontSize: '32px',
+        fill: '#000',
+      })
+
+      this.physics.add.collider(player, platforms)
+      this.physics.add.collider(marios, platforms)
+      this.physics.add.collider(bombs, platforms)
+
+      this.physics.add.overlap(player, marios, collectMario, null, this)
+      this.physics.add.collider(player, bombs, hitBomb, null, this)
+
+      //////////////////////////////////////////////////////////////////////
+      function update() {
+        if (cursors.left.isDown) {
+          player.setVelocityX(-160)
+
+          player.anims.play('left', true)
+        } else if (cursors.right.isDown) {
+          player.setVelocityX(160)
+
+          player.anims.play('right', true)
+        } else {
+          player.setVelocityX(0)
+
+          player.anims.play('turn')
+        }
+
+        if (cursors.up.isDown && player.body.touching.down) {
+          player.setVelocityY(-430)
+        }
+      }
+
+      function collectMario(player, mario) {
+        mario.disableBody(true, true)
+        score += 10
+        scoreText.setText('Score: ' + score)
+
+        if (marios.countActive(true) === 0) {
+          marios.children.iterate(function (child) {
+            child.enableBody(true, child.x, 0, true, true)
+          })
+
+          var x =
+            player.x < 400
+              ? Phaser.Math.Between(400, 800)
+              : Phaser.Math.Between(0, 400)
+
+          var bomb = bombs.create(x, 16, 'bomb')
+          bomb.setBounce(1)
+          bomb.setCollideWorldBounds(true)
+          bomb.setVelocity(Phaser.Math.Between(-200, 200), 20)
+        }
+      }
+
+      function hitBomb(player, bomb) {
+        bomb.destroy() // Destroy the bomb that hit the player
+
+        lives -= 1 // Decrease lives
+        livesText.setText('Lives: ' + lives) // Update lives display
+
+        if (lives > 0) {
+          // Reset the player's position
+          player.setPosition(100, 450)
+          player.setTint(0xff0000) // Flash red briefly
+          this.time.delayedCall(500, () => {
+            player.clearTint()
+          })
+        } else {
+          // Game over logic when lives reach 0
+          this.physics.pause() // Pause the game
+          player.setTint(0xff0000)
+          player.anims.play('turn')
+
+          // Show restart button
+          const restartButton = this.add
+            .text(400, 300, 'Restart Game', {
+              fontSize: '32px',
+              fill: '#fff',
+              backgroundColor: '#000',
+              padding: { x: 10, y: 5 },
+            })
+            .setOrigin(0.5)
+            .setInteractive()
+            .on('pointerdown', () => {
+              this.scene.restart() // Restart the scene
+              lives = 3 // Reset lives
+              score = 0 // Keep or reset the score (you can decide here)
+            })
+        }
+      }
+    </script>
+    <script src="/phaser3-Game.3464ddca.js"></script>
+  </body>
+</html>
